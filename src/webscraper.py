@@ -20,6 +20,7 @@ CHROME_OPTIONS.add_argument("--disable-gpu")
 SERVICE = Service(CHROMEDRIVER_PATH)
 PROGRESS_PATH = "/home/devin/projects/cat/saved-data/progress.json"
 INSTANTIATION_PATH = "/home/devin/projects/cat/saved-data/instantiation.json"
+MAX_LENGTH = 20
 
 # amount of cpus to pick from. Decides how many webdrives to keep open and how many threads to manage
 POOL_SIZE = os.cpu_count()
@@ -119,6 +120,22 @@ def parseDay(WebURL):
 
     return dayHorses
 
+def updateDog(thingToSave: dict, filename=PROGRESS_PATH):
+    try:
+        with open(filename, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+    except FileNotFoundError:
+        data = {"data": []} 
+
+
+    data["data"].insert(0, thingToSave)
+    data["data"] = data["data"][:MAX_LENGTH]
+
+    # Write the updated list back to the same JSON file
+    with open(filename, 'w', encoding='utf-8') as file:
+        json.dump(data, file)
+
+
 # Parses entire histories worth of races
 def parseRacingPostHistory(
     YEAR_LIMIT=2024, MONTH_LIMIT=12, DAY_LIMIT=31,
@@ -163,13 +180,12 @@ def parseRacingPostHistory(
         try:
             dayHorses = parseDay(url)
             yearsHorses.append(dayHorses)
-            with open(PROGRESS_PATH, "w") as file:
-                json.dump({"active": True, 
-                            "year": dayPeriod.year, 
-                            "month": dayPeriod.month,
-                            "day": dayPeriod.day,
-                            "horses": len(dayHorses),
-                            "time": round(time.time() - startTime)}, file)
+            updateDog({"active": True, 
+                        "year": dayPeriod.year, 
+                        "month": dayPeriod.month,
+                        "day": dayPeriod.day,
+                        "horses": len(dayHorses),
+                        "time": round(time.time() - startTime)})
                             
             print(f"Scraped {len(dayHorses)} horses for {dateString}")
 
@@ -210,7 +226,4 @@ if __name__ == "__main__":
     except:
         traceback.print_exc()
         with open(PROGRESS_PATH, "w") as file:
-            json.dump({"active": False, 
-                        "year": 2000, 
-                        "month": 1,
-                        "day": 1}, file)
+            json.dump({"horses": []}, file)
