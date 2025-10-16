@@ -5,8 +5,10 @@ import shutil
 import numpy as np
 import time
 import pandas
+import json
 from concurrent.futures import ThreadPoolExecutor
 import os
+import traceback
 
 # CONFIG 
 CHROMEDRIVER_PATH = shutil.which("chromedriver")
@@ -16,6 +18,8 @@ CHROME_OPTIONS.add_argument("--no-sandbox")
 CHROME_OPTIONS.add_argument("--disable-dev-shm-usage")
 CHROME_OPTIONS.add_argument("--disable-gpu")
 SERVICE = Service(CHROMEDRIVER_PATH)
+PROGRESS_PATH = "/home/devin/projects/cat/saved-data/progress.json"
+INSTANTIATION_PATH = "/home/devin/projects/cat/saved-data/instantiation.json"
 
 # amount of cpus to pick from. Decides how many webdrives to keep open and how many threads to manage
 POOL_SIZE = os.cpu_count()
@@ -112,6 +116,7 @@ def parseDay(WebURL):
             results = list(executor.map(parseRace, links))
 
     dayHorses = np.vstack(results)
+
     return dayHorses
 
 # Parses entire histories worth of races
@@ -126,6 +131,14 @@ def parseRacingPostHistory(
     allHorses = []
     yearsHorses = []
     dayCount = 0
+
+    with open(INSTANTIATION_PATH, "w") as file:
+                json.dump({ "startYear": START_YEAR, 
+                            "startMonth": START_MONTH,
+                            "startDay": START_DAY, 
+                            "endYear": YEAR_LIMIT, 
+                            "endMonth": MONTH_LIMIT,
+                            "endDay": DAY_LIMIT}, file)
 
     for dayPeriod in parseRange:
         # every new year create a save state
@@ -150,9 +163,23 @@ def parseRacingPostHistory(
         try:
             dayHorses = parseDay(url)
             yearsHorses.append(dayHorses)
+            with open(PROGRESS_PATH, "w") as file:
+                json.dump({"active": True, 
+                            "year": dayPeriod.year, 
+                            "month": dayPeriod.month,
+                            "day": dayPeriod.day,
+                            "horses": len(dayHorses),
+                            "time": round(time.time() - startTime)}, file)
+                            
             print(f"Scraped {len(dayHorses)} horses for {dateString}")
 
         except Exception as e:
+            with open(PROGRESS_PATH, "w") as file:
+                json.dump({"active": True, 
+                            "year": dayPeriod.year, 
+                            "month": dayPeriod.month,
+                            "day": dayPeriod.day,
+                            "horses": 0}, file)
             print(f"Error scraping {dateString}: {e}")
 
         print(f"Parsing {dateString} took:", time.time() - startTime, "seconds")
@@ -178,4 +205,12 @@ def parseRacingPostHistory(
 
 # for building simple test executions
 if __name__ == "__main__":
-    print("1")
+    try: 
+        parseRacingPostHistory(START_YEAR=2000, START_MONTH=1, START_DAY=1)
+    except:
+        traceback.print_exc()
+        with open(PROGRESS_PATH, "w") as file:
+            json.dump({"active": False, 
+                        "year": 2000, 
+                        "month": 1,
+                        "day": 1}, file)
