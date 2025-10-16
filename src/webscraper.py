@@ -124,12 +124,11 @@ def updateDog(thingToSave: dict, filename=PROGRESS_PATH):
     try:
         with open(filename, 'r', encoding='utf-8') as file:
             data = json.load(file)
-    except FileNotFoundError:
-        data = {"data": []} 
 
-
-    data["data"].insert(0, thingToSave)
-    data["data"] = data["data"][:MAX_LENGTH]
+        data["data"].insert(0, thingToSave)
+        data["data"] = data["data"][:MAX_LENGTH]
+    except Exception:
+        data = {"data": [thingToSave]} 
 
     # Write the updated list back to the same JSON file
     with open(filename, 'w', encoding='utf-8') as file:
@@ -190,12 +189,6 @@ def parseRacingPostHistory(
             print(f"Scraped {len(dayHorses)} horses for {dateString}")
 
         except Exception as e:
-            with open(PROGRESS_PATH, "w") as file:
-                json.dump({"active": True, 
-                            "year": dayPeriod.year, 
-                            "month": dayPeriod.month,
-                            "day": dayPeriod.day,
-                            "horses": 0}, file)
             print(f"Error scraping {dateString}: {e}")
 
         print(f"Parsing {dateString} took:", time.time() - startTime, "seconds")
@@ -225,5 +218,3 @@ if __name__ == "__main__":
         parseRacingPostHistory(START_YEAR=2000, START_MONTH=1, START_DAY=1)
     except:
         traceback.print_exc()
-        with open(PROGRESS_PATH, "w") as file:
-            json.dump({"horses": []}, file)
